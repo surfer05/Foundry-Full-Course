@@ -52,17 +52,17 @@ contract FundMeTest is Test {
     function testOnlyOwnerCanWithdraw() public funded {
         vm.expectRevert();
         vm.prank(USER);
-        fundMe.withdraw();
+        fundMe.cheaperWithdraw();
     }
 
-    function testWithdrawWithASingleFunder() public {
+    function testWithdrawWithASingleFunderCheaper() public {
         // Arrange
         uint startingOwnerBalance = fundMe.getOwner().balance;
         uint startingFundMeBalance = address(fundMe).balance;
 
         // Act
         vm.startPrank(fundMe.getOwner());
-        fundMe.withdraw();
+        fundMe.cheaperWithdraw();
         vm.stopPrank();
         uint gasStart = gasleft();
         vm.txGasPrice(GAS_PRICE);
@@ -82,7 +82,7 @@ contract FundMeTest is Test {
         assertEq(endingFundMeBalance, 0);
     }
 
-    function testWithdrawWithMultipleFunders() public funded {
+    function testWithdrawWithMultipleFundersCheaper() public funded {
         // Arrange
 
         uint160 numberOfFunders = 10;
@@ -96,7 +96,7 @@ contract FundMeTest is Test {
         uint startingOwnerBalance = fundMe.getOwner().balance;
         uint startingFundMeBalance = address(fundMe).balance;
         vm.startPrank(fundMe.getOwner());
-        fundMe.withdraw();
+        fundMe.cheaperWithdraw();
         vm.stopPrank();
 
         // Assert

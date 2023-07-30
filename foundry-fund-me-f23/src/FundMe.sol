@@ -14,7 +14,7 @@ contract FundMe {
     AggregatorV3Interface private s_priceFeed;
 
     // Could we make this constant?  /* hint: no! We should make it immutable! */
-    address public /* immutable */ i_owner;
+    address private /* immutable */ i_owner;
     uint256 public constant MINIMUM_USD = 5 * 10 ** 18;
     
     constructor(address priceFeed) {
@@ -23,7 +23,7 @@ contract FundMe {
     }
 
     function fund() public payable {
-        require(msg.value.getConversionRate(AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306)) >= MINIMUM_USD, "You need to spend more ETH!");
+        require(msg.value.getConversionRate(s_priceFeed) >= MINIMUM_USD, "You need to spend more ETH!");
         // require(PriceConverter.getConversionRate(msg.value) >= MINIMUM_USD, "You need to spend more ETH!");
         s_addressToAmountFunded[msg.sender] += msg.value;
         s_funders.push(msg.sender);
@@ -75,6 +75,22 @@ contract FundMe {
 
     receive() external payable {
         fund();
+    }
+
+
+    /////////////////////////
+    // View/Pure function ///
+    ////////////////////////
+    function getAddressToAmountFunded(address fundingAddress) external view returns(uint) {
+        return s_addressToAmountFunded[fundingAddress];
+    }
+
+    function getFunders(uint index) public view returns(address){
+        return s_funders[index];
+    }
+
+    function getOwner() public view returns(address){
+        return i_owner;
     }
 
 }

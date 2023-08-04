@@ -40,7 +40,7 @@ contract Raffle {
 
     function enterRaffle() public payable {
         if (msg.value < i_entranceFee) {
-            revert NotEnoughEthSent();
+            revert Raffle__NotEnoughEthSent();
         }
     }
 

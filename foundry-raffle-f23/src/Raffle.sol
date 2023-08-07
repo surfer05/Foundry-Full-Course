@@ -36,37 +36,44 @@ contract Raffle is VRFConsumerBaseV2 {
     error Raffle__NotEnoughEthSent();
     error Raffle__TransferFailed();
     error Raffle__RaffleNotOpen();
+    error Raffle__UpKeepNotNeeded(uint256, uint256, uint256);
 
-    /** Type Declarations */
-    enum RaffleState{
-        OPEN, 
+    /**
+     * Type Declarations
+     */
+    enum RaffleState {
+        OPEN,
         CALCULATING
     }
 
-    /** State variables */
+    /**
+     * State variables
+     */
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 1;
 
-    uint private immutable i_entranceFee; // do we want to update the entrance fee, not really, thus make it immutable
-    uint private immutable i_interval;
+    uint256 private immutable i_entranceFee; // do we want to update the entrance fee, not really, thus make it immutable
+    uint256 private immutable i_interval;
     VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
     bytes32 private immutable i_gasLane;
     uint64 private immutable i_subscriptionId;
     uint32 private immutable i_callbackGasLimit;
 
-    uint private s_lastTimestamp;
+    uint256 private s_lastTimestamp;
     // @dev duration of the lottery in seconds
     address payable[] private s_players;
     address private s_recentWinner;
     RaffleState private s_raffleState;
 
-    /** Events */
+    /**
+     * Events
+     */
     event EnteredRaffle(address indexed player);
     event PickedWinner(address indexed winner);
 
     constructor(
-        uint entranceFee,
-        uint interval,
+        uint256 entranceFee,
+        uint256 interval,
         address vrfCoordinator,
         bytes32 gasLane,
         uint64 subscriptionId,
@@ -86,35 +93,18 @@ contract Raffle is VRFConsumerBaseV2 {
         if (msg.value < i_entranceFee) {
             revert Raffle__NotEnoughEthSent();
         }
-        if(s_raffleState != RaffleState.OPEN) revert Raffle__RaffleNotOpen();
+        if (s_raffleState != RaffleState.OPEN) revert Raffle__RaffleNotOpen();
         s_players.push(payable(msg.sender));
 
         // Makes migration easier
         emit EnteredRaffle(msg.sender);
     }
 
-    // Get a random number
-    // Use the random number to pick a player
-    // Be automatically called
-    function pickWinner() public {
-        if (block.timestamp - s_lastTimestamp < i_interval) {
-            revert();
-        }
-        s_raffleState = RaffleState.CALCULATING;
-        uint requestId = i_vrfCoordinator.requestRandomWords(
-            i_gasLane,
-            i_subscriptionId,
-            REQUEST_CONFIRMATIONS,
-            i_callbackGasLimit,
-            NUM_WORDS
-        );
-    }
-
     function fulfillRandomWords(
-        uint256 requestId,
+        uint256 /*requestId*/,
         uint256[] memory randomWords
     ) internal override {
-        uint indexOfWinner = randomWords[0] % s_players.length;
+        uint256 indexOfWinner = randomWords[0] % s_players.length;
         address payable winner = s_players[indexOfWinner];
         s_recentWinner = winner;
         s_raffleState = RaffleState.OPEN;
@@ -125,9 +115,60 @@ contract Raffle is VRFConsumerBaseV2 {
         emit PickedWinner(winner);
     }
 
-    /** Getter functions */
+    // When is the winner supposed to be picked
+    /**
+     * @dev This is the functions that Chainlink Automation nodes call to see if it's time to perform an Upkeep
+     * The following should be true for this to return true:
+     * 1. The time interval has passed between raffle runs
+     * 2. The Raffle is in the OPEN state
+     * 3. The contract has ETH, aka has players
+     * 4. Implicit - the subscription is funded with LINK.
+     * @return upKeepNeeded
+     * @return
+     */
 
-    function getEntranceFee() external view returns (uint) {
+    function checkUpKepp(
+        bytes memory /*checkData*/
+    ) public view returns (bool upKeepNeeded, bytes memory /* perfromData */) {
+        bool timeHasPassed = (block.timestamp - s_lastTimestamp) >= i_interval;
+        bool isOpen = RaffleState.OPEN == s_raffleState;
+        bool hasBalance = address(this).balance > 0;
+        bool hasPlayers = s_players.length > 0;
+        upKeepNeeded = (timeHasPassed && isOpen && hasBalance && hasPlayers);
+        return (upKeepNeeded, "0x0");
+    }
+
+    // Get a random number
+    // Use the random number to pick a player
+    // Be automatically called
+    function performUpKeep(bytes calldata /* performData */) public {
+        (bool upkeepNeeded, ) = checkUpKepp("");
+        if (!upkeepNeeded) {
+            revert Raffle__UpKeepNotNeeded(
+                address(this).balance,
+                s_players.length,
+                uint256(s_raffleState)
+            );
+        }
+
+        if (block.timestamp - s_lastTimestamp < i_interval) {
+            revert();
+        }
+        s_raffleState = RaffleState.CALCULATING;
+        uint256 requestId = i_vrfCoordinator.requestRandomWords(
+            i_gasLane,
+            i_subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            i_callbackGasLimit,
+            NUM_WORDS
+        );
+    }
+
+    /**
+     * Getter functions
+     */
+
+    function getEntranceFee() external view returns (uint256) {
         return i_entranceFee;
     }
 }

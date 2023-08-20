@@ -54,8 +54,19 @@ contract RaffleTest is Test {
         ) = helperConfig.activeNetworkConfig();
     }
 
-
     function testRaffleInitializesInOpenState() public view {
-        assert (raffle.getRaffleState() == Raffle.RaffleState.OPEN);
+        assert(raffle.getRaffleState() == Raffle.RaffleState.OPEN);
+    }
+
+    ///////////////////////
+    /// enterRaffle //////
+    /////////////////////
+
+    function testRevertRaffleWhenYouDontPayEnough() public {
+        // Arrange
+        vm.prank(PLAYER);
+        // Act / Assert
+        vm.expectRevert(Raffle.Raffle__NotEnoughEthSent.selector);
+        raffle.enterRaffle();
     }
 }

@@ -24,7 +24,8 @@ pragma solidity ^0.8.17;
 
 import {Script, console} from "forge-std/Script.sol";
 import {HelperConfig} from "./HelperConfig.s.sol";
-import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
+import {LinkToken} from "../test/mocks/LinkToken.sol";
 
 contract CreateSubscription is Script {
     function createSubscriptionUsingConfig() public returns (uint64) {
@@ -39,7 +40,7 @@ contract CreateSubscription is Script {
     ) public returns (uint64) {
         console.log("Creating subscription on Chain Id ", block.chainid);
         vm.startBroadcast();
-        uint64 subId = VRFCoordinatorV2Interface(vrfCoordinator)
+        uint64 subId = VRFCoordinatorV2Mock(vrfCoordinator)
             .createSubscription();
         vm.stopBroadcast();
         console.log("Your sub Id is :", subId);
@@ -53,7 +54,7 @@ contract CreateSubscription is Script {
 }
 
 contract FundSubscription is Script {
-    uint public constant FUND_AMOUNT = 3 ether;
+    uint96 public constant FUND_AMOUNT = 0.1 ether;
 
     function fundSubscriptionUsingConfig() public {
         HelperConfig helperConfig = new HelperConfig();
@@ -74,12 +75,35 @@ contract FundSubscription is Script {
         uint64 subId,
         address link
     ) public {
-        console.log("Funding subscription :",subId);
+        console.log("Funding subscription :", subId);
         console.log("Using vrfCoordinator :", vrfCoordinator);
         console.log("On ChainId :", block.chainid);
+        console.log(msg.sender);
+        console.log(LinkToken(link).balanceOf(msg.sender));
+        if (block.chainid == 31337) {
+            VRFCoordinatorV2Mock(vrfCoordinator).fundSubscription(
+                subId,
+                FUND_AMOUNT
+            );
+        } else {
+            console.log("part 2",LinkToken(link).balanceOf(msg.sender));
+            console.log("part 2 ", msg.sender);
+            LinkToken(link).transferAndCall(
+                vrfCoordinator,
+                FUND_AMOUNT,
+                abi.encode(subId)
+            );
+        }
     }
 
     function run() external {
         return fundSubscriptionUsingConfig();
+    }
+}
+
+
+contract AddConsumer is Script {
+    function run() external {
+        
     }
 }

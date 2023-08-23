@@ -29,7 +29,8 @@ import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interface
 contract CreateSubscription is Script {
     function createSubscriptionUsingConfig() public returns (uint64) {
         HelperConfig helperConfig = new HelperConfig();
-        (, , address vrfCoordinator, , , ) = helperConfig.activeNetworkConfig();
+        (, , address vrfCoordinator, , , , address link) = helperConfig
+            .activeNetworkConfig();
         return createSubscription(vrfCoordinator);
     }
 
@@ -51,19 +52,31 @@ contract CreateSubscription is Script {
     }
 }
 
-
-contract FundSubscription is Script{
-
+contract FundSubscription is Script {
     uint public constant FUND_AMOUNT = 3 ether;
 
     function fundSubscriptionUsingConfig() public {
         HelperConfig helperConfig = new HelperConfig();
-        (, , address vrfCoordinator, , uint64 subId , ) = helperConfig.activeNetworkConfig();
-        return fundSubscription();
+        (
+            ,
+            ,
+            address vrfCoordinator,
+            ,
+            uint64 subId,
+            ,
+            address link
+        ) = helperConfig.activeNetworkConfig();
+        return fundSubscription(vrfCoordinator, subId, link);
     }
 
-    function fundSubscription() public {
-
+    function fundSubscription(
+        address vrfCoordinator,
+        uint64 subId,
+        address link
+    ) public {
+        console.log("Funding subscription :",subId);
+        console.log("Using vrfCoordinator :", vrfCoordinator);
+        console.log("On ChainId :", block.chainid);
     }
 
     function run() external {
